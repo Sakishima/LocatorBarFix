@@ -7,6 +7,7 @@ import dev.sakishima.locatorbarfix.infrastructure.packet.WaypointPacketListener
 import dev.sakishima.locatorbarfix.infrastructure.packet.WaypointStateObserver
 import dev.sakishima.locatorbarfix.infrastructure.persistence.InMemoryWaypointStateRepository
 import org.bukkit.plugin.java.JavaPlugin
+import java.util.logging.Level
 
 /**
  * Главный класс плагина LocatorBarFix.
@@ -43,12 +44,19 @@ class LocatorBarFixPlugin : JavaPlugin() {
             logger = logger
         )
 
-        packetEventsApi.eventManager.registerListener(guardListener)
-        packetEventsApi.eventManager.registerListener(observer)
-
+        // Регистрируем зависимости для очистки даже при частичном сбое onEnable.
         guardService = service
         packetListener = guardListener
         stateObserver = observer
+
+        try {
+            packetEventsApi.eventManager.registerListener(guardListener)
+            packetEventsApi.eventManager.registerListener(observer)
+        } catch (exception: Exception) {
+            logger.log(Level.SEVERE, "Не удалось зарегистрировать обработчики PacketEvents.", exception)
+            server.pluginManager.disablePlugin(this)
+            return
+        }
 
         logger.info("Защита Locator Bar активирована для Minecraft 26.2.")
     }

@@ -8,7 +8,6 @@ import com.github.retrooper.packetevents.protocol.packettype.PacketType
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWaypoint
 import dev.sakishima.locatorbarfix.application.WaypointGuardService
 import dev.sakishima.locatorbarfix.domain.model.PacketDecision
-import dev.sakishima.locatorbarfix.domain.model.WaypointOperation
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -43,11 +42,12 @@ internal class WaypointPacketListener(
 
         try {
             val wrapper = WrapperPlayServerWaypoint(event)
-            val packet = mapper.toDomain(wrapper)
-
-            if (packet.operation != WaypointOperation.UPDATE) {
+            // Остальные операции не относятся к защите UPDATE.
+            if (wrapper.operation != WrapperPlayServerWaypoint.Operation.UPDATE) {
                 return
             }
+
+            val packet = mapper.toDomain(wrapper)
 
             val viewerId = event.user.uuid
             if (guardService.process(viewerId, packet) == PacketDecision.CANCEL) {

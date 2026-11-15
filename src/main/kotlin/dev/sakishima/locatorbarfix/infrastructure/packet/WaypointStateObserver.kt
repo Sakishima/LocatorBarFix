@@ -6,16 +6,14 @@ import com.github.retrooper.packetevents.event.PacketSendEvent
 import com.github.retrooper.packetevents.protocol.packettype.PacketType
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWaypoint
 import dev.sakishima.locatorbarfix.application.WaypointGuardService
-import dev.sakishima.locatorbarfix.domain.model.WaypointOperation
 import java.util.logging.Level
 import java.util.logging.Logger
 
 /**
- * Наблюдатель финального результата отправки TRACK и UNTRACK.
+ * Наблюдатель неотменённых TRACK и UNTRACK.
  *
- * Работает на MONITOR и не изменяет пакет. Благодаря этому состояние обновляется
- * только после того, как остальные обработчики приняли окончательное решение
- * об отмене события.
+ * Работает на MONITOR и не изменяет пакет. Событие проверяется после
+ * предыдущих обработчиков, но это не подтверждает доставку пакета клиенту.
  *
  * @param guardService сервис управления состоянием waypoint.
  * @param logger журнал плагина для сообщений об ошибках разбора.
@@ -38,13 +36,15 @@ internal class WaypointStateObserver(
         }
 
         try {
-            val packet = mapper.toDomain(WrapperPlayServerWaypoint(event))
+            val wrapper = WrapperPlayServerWaypoint(event)
             if (
-                packet.operation == WaypointOperation.TRACK ||
-                packet.operation == WaypointOperation.UNTRACK
+                wrapper.operation != WrapperPlayServerWaypoint.Operation.TRACK &&
+                wrapper.operation != WrapperPlayServerWaypoint.Operation.UNTRACK
             ) {
-                guardService.process(event.user.uuid, packet)
+                return
             }
+
+            guardService.process(event.user.uuid, mapper.toDomain(wrapper))
         } catch (exception: Exception) {
             logger.log(
                 Level.WARNING,
