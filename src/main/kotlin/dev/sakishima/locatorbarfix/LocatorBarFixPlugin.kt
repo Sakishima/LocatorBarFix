@@ -5,6 +5,7 @@ import dev.sakishima.locatorbarfix.application.WaypointGuardService
 import dev.sakishima.locatorbarfix.configuration.PluginSettingsLoader
 import dev.sakishima.locatorbarfix.infrastructure.packet.WaypointPacketListener
 import dev.sakishima.locatorbarfix.infrastructure.packet.WaypointStateObserver
+import dev.sakishima.locatorbarfix.infrastructure.bukkit.PlayerQuitCleanupListener
 import dev.sakishima.locatorbarfix.infrastructure.persistence.InMemoryWaypointStateRepository
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.logging.Level
@@ -52,6 +53,10 @@ class LocatorBarFixPlugin : JavaPlugin() {
         try {
             packetEventsApi.eventManager.registerListener(guardListener)
             packetEventsApi.eventManager.registerListener(observer)
+            // Bukkit гарантирует UUID вошедшего игрока при штатном выходе.
+            // Этот обработчик очищает реестр, даже если PacketEvents на
+            // UserDisconnectEvent уже забыл UUID.
+            server.pluginManager.registerEvents(PlayerQuitCleanupListener(service), this)
         } catch (exception: Exception) {
             logger.log(Level.SEVERE, "Не удалось зарегистрировать обработчики PacketEvents.", exception)
             server.pluginManager.disablePlugin(this)

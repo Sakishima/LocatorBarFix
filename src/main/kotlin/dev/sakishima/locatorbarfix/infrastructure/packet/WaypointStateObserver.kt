@@ -6,6 +6,7 @@ import com.github.retrooper.packetevents.event.PacketSendEvent
 import com.github.retrooper.packetevents.protocol.packettype.PacketType
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWaypoint
 import dev.sakishima.locatorbarfix.application.WaypointGuardService
+import java.util.UUID
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -44,7 +45,9 @@ internal class WaypointStateObserver(
                 return
             }
 
-            guardService.process(event.user.uuid, mapper.toDomain(wrapper))
+            // У соединения без UUID нет состояния, которое следует изменять.
+            val viewerId: UUID? = event.user.uuid
+            guardService.process(viewerId, mapper.toDomain(wrapper))
         } catch (exception: Exception) {
             logger.log(
                 Level.WARNING,
