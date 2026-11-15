@@ -1,0 +1,9 @@
+name: LocatorBarFix
+version: 1.0.0
+main: dev.sakishima.locatorbarfix.LocatorBarFixPlugin
+api-version: '26.2'
+depend:
+  - packetevents
+authors:
+  - Sakishima
+description: Защита от некорректных UPDATE-пакетов Locator Bar на Minecraft 26.2.
