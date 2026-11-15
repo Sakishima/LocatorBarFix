@@ -48,13 +48,13 @@ internal class PacketWaypointMapper {
     private fun toDomain(identifier: Either<UUID, String>): WaypointIdentifier =
         if (identifier.isLeft) {
             WaypointIdentifier.Uuid(
-                requireNotNull(identifier.left) {
+                checkNotNull(identifier.left) {
                     "PacketEvents вернул пустой UUID waypoint."
                 }
             )
         } else {
             WaypointIdentifier.Named(
-                requireNotNull(identifier.right) {
+                checkNotNull(identifier.right) {
                     "PacketEvents вернул пустое строковое имя waypoint."
                 }
             )

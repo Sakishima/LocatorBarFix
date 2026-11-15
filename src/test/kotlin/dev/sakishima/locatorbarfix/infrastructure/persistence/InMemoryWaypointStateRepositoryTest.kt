@@ -59,6 +59,20 @@ class InMemoryWaypointStateRepositoryTest {
     }
 
     /**
+     * Проверяет, что UUID и строковое имя не смешиваются даже при одинаковом тексте.
+     */
+    @Test
+    fun `uuid and named identifiers are distinct`() {
+        val namedWaypoint = WaypointIdentifier.Named(waypoint.value.toString())
+        process(viewer, WaypointOperation.TRACK)
+
+        assertEquals(
+            PacketDecision.CANCEL,
+            repository.process(viewer, packet(WaypointOperation.UPDATE, namedWaypoint))
+        )
+    }
+
+    /**
      * Проверяет, что неизвестный UNTRACK не затрагивает другие метки.
      */
     @Test

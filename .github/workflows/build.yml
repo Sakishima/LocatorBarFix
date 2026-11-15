@@ -30,7 +30,7 @@ jobs:
           gradle-version: "9.2.1"
 
       - name: Run tests and build plugin
-        run: gradle clean test shadowJar
+        run: gradle clean build
 
       - name: Upload plugin JAR
         uses: actions/upload-artifact@v4
