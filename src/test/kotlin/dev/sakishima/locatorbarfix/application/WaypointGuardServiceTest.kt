@@ -46,6 +46,19 @@ class WaypointGuardServiceTest {
     }
 
     /**
+     * Повторная очистка одного игрока безопасна, если сработали оба обработчика.
+     */
+    @Test
+    fun `multiple disconnect events are idempotent`() {
+        service.process(viewer, packet(WaypointOperation.TRACK))
+        service.onViewerDisconnect(viewer)
+        service.onViewerDisconnect(null)
+        service.onViewerDisconnect(viewer)
+
+        assertEquals(PacketDecision.CANCEL, service.process(viewer, packet(WaypointOperation.UPDATE)))
+    }
+
+    /**
      * Пакет с выбранной операцией для проверки состояния.
      *
      * @param operation операция протокола.
