@@ -8,13 +8,14 @@ import com.github.retrooper.packetevents.protocol.packettype.PacketType
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWaypoint
 import dev.sakishima.locatorbarfix.application.WaypointGuardService
 import dev.sakishima.locatorbarfix.domain.model.PacketDecision
+import dev.sakishima.locatorbarfix.domain.model.WaypointOperation
 import java.util.logging.Level
 import java.util.logging.Logger
 
 /**
- * Адаптер сетевого слоя: извлекает waypoint-пакеты и передаёт их прикладному сервису.
+ * Фильтр исходящих UPDATE-пакетов Locator Bar.
  *
- * @param guardService сервис, принимающий решение о допустимости waypoint-операции.
+ * @param guardService сервис, принимающий решение о допустимости UPDATE.
  * @param logger журнал плагина для диагностических сообщений.
  * @param debug включает подробное логирование заблокированных UPDATE.
  */
@@ -27,29 +28,28 @@ internal class WaypointPacketListener(
     private val mapper = PacketWaypointMapper()
 
     /**
-     * Обрабатывает только исходящие waypoint-пакеты.
+     * Отменяет UPDATE, если waypoint ещё не зарегистрирован для получателя.
      *
-     * Приоритет HIGHEST выбран, чтобы учитывать отмену пакета предыдущими обработчиками:
-     * отменённый TRACK не должен попадать в локальный реестр, иначе последующий UPDATE
-     * будет ошибочно принят за безопасный.
+     * TRACK и UNTRACK здесь не меняют состояние: их окончательный статус может
+     * измениться в другом обработчике с тем же приоритетом. Фактические переходы
+     * фиксирует [WaypointStateObserver] на MONITOR после завершения отмены события.
      *
      * @param event событие отправки пакета PacketEvents.
      */
     override fun onPacketSend(event: PacketSendEvent) {
-        if (event.packetType != PacketType.Play.Server.WAYPOINT) {
-            return
-        }
-
-        // Не меняем состояние по пакету, который уже отменил другой обработчик.
-        if (event.isCancelled) {
+        if (event.packetType != PacketType.Play.Server.WAYPOINT || event.isCancelled) {
             return
         }
 
         try {
             val wrapper = WrapperPlayServerWaypoint(event)
             val packet = mapper.toDomain(wrapper)
-            val viewerId = event.user.uuid
 
+            if (packet.operation != WaypointOperation.UPDATE) {
+                return
+            }
+
+            val viewerId = event.user.uuid
             if (guardService.process(viewerId, packet) == PacketDecision.CANCEL) {
                 event.isCancelled = true
 

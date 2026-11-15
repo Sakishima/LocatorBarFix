@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.PacketEvents
 import dev.sakishima.locatorbarfix.application.WaypointGuardService
 import dev.sakishima.locatorbarfix.configuration.PluginSettingsLoader
 import dev.sakishima.locatorbarfix.infrastructure.packet.WaypointPacketListener
+import dev.sakishima.locatorbarfix.infrastructure.packet.WaypointStateObserver
 import dev.sakishima.locatorbarfix.infrastructure.persistence.InMemoryWaypointStateRepository
 import org.bukkit.plugin.java.JavaPlugin
 
@@ -16,10 +17,11 @@ import org.bukkit.plugin.java.JavaPlugin
 class LocatorBarFixPlugin : JavaPlugin() {
 
     private var packetListener: WaypointPacketListener? = null
+    private var stateObserver: WaypointStateObserver? = null
     private var guardService: WaypointGuardService? = null
 
     /**
-     * Инициализирует настройки, прикладной сервис и регистрирует обработчик PacketEvents.
+     * Инициализирует настройки, прикладной сервис и регистрирует обработчики PacketEvents.
      */
     override fun onEnable() {
         val packetEventsApi = PacketEvents.getAPI()
@@ -31,30 +33,37 @@ class LocatorBarFixPlugin : JavaPlugin() {
 
         val settings = PluginSettingsLoader(this).load()
         val service = WaypointGuardService(InMemoryWaypointStateRepository())
-        val listener = WaypointPacketListener(
+        val guardListener = WaypointPacketListener(
             guardService = service,
             logger = logger,
             debug = settings.debug
         )
+        val observer = WaypointStateObserver(
+            guardService = service,
+            logger = logger
+        )
 
-        packetEventsApi.eventManager.registerListener(listener)
+        packetEventsApi.eventManager.registerListener(guardListener)
+        packetEventsApi.eventManager.registerListener(observer)
 
         guardService = service
-        packetListener = listener
+        packetListener = guardListener
+        stateObserver = observer
 
         logger.info("Защита Locator Bar активирована для Minecraft 26.2.")
     }
 
     /**
-     * Снимает обработчик сетевых событий и очищает накопленное состояние.
+     * Снимает обработчики сетевых событий и очищает накопленное состояние.
      */
     override fun onDisable() {
-        packetListener?.let { listener ->
-            PacketEvents.getAPI().eventManager.unregisterListener(listener)
-        }
+        val eventManager = PacketEvents.getAPI().eventManager
+        packetListener?.let(eventManager::unregisterListener)
+        stateObserver?.let(eventManager::unregisterListener)
 
         guardService?.shutdown()
         packetListener = null
+        stateObserver = null
         guardService = null
     }
 }
