@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "dev.sakishima"
-version = "1.0.0"
+version = "1.0.1"
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2.build.129-stable")

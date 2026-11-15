@@ -8,6 +8,7 @@ import com.github.retrooper.packetevents.protocol.packettype.PacketType
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWaypoint
 import dev.sakishima.locatorbarfix.application.WaypointGuardService
 import dev.sakishima.locatorbarfix.domain.model.PacketDecision
+import java.util.UUID
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -49,7 +50,9 @@ internal class WaypointPacketListener(
 
             val packet = mapper.toDomain(wrapper)
 
-            val viewerId = event.user.uuid
+            // PacketEvents.getUUID() возвращает Java platform type и иногда null.
+            // Явная nullable-переменная исключает неявный Kotlin NPE.
+            val viewerId: UUID? = event.user.uuid
             if (guardService.process(viewerId, packet) == PacketDecision.CANCEL) {
                 event.isCancelled = true
 
@@ -76,6 +79,8 @@ internal class WaypointPacketListener(
      * @param event событие разрыва соединения PacketEvents.
      */
     override fun onUserDisconnect(event: UserDisconnectEvent) {
-        guardService.onViewerDisconnect(event.user.uuid)
+        // При отключении до завершения входа UUID может ещё отсутствовать.
+        val viewerId: UUID? = event.user.uuid
+        guardService.onViewerDisconnect(viewerId)
     }
 }
