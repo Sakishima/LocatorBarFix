@@ -1,5 +1,21 @@
 # LocatorBarFix
 
+**Minecraft Java 26.2 server-side workaround for [MC-305422](https://bugs.mojang.com/browse/MC-305422)** — a Locator Bar / waypoint packet bug that can disconnect players with a client-side `NullPointerException`. This open-source Paper plugin uses PacketEvents to filter `UPDATE` packets for waypoint IDs not previously tracked for the recipient, without disabling the Locator Bar.
+
+**Official status:** Mojang fixed [MC-305422](https://bugs.mojang.com/browse/MC-305422) in [Minecraft 26.3 Snapshot 2](https://www.minecraft.net/en-us/article/minecraft-26-3-snapshot-2); the fix is also included in the [Minecraft Java Edition 26.3 release](https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3). LocatorBarFix is intended for affected older versions, especially Minecraft 26.2. Updating the game is preferable where practical.
+
+**Crash signature / search terms:** `ClientWaypointManager.updateWaypoint`, `ClientboundTrackedWaypointPacket.apply`, `java.lang.NullPointerException`, `clientbound/minecraft:waypoint`, `Locator Bar`, `waypoint UPDATE`. This workaround cannot prevent every possible form of client/server waypoint desynchronization.
+
+[Download v1.0.1](https://github.com/Sakishima/LocatorBarFix/releases/tag/v1.0.1) · [Official Minecraft bug report MC-305422](https://bugs.mojang.com/browse/MC-305422) · [Apache-2.0 license](LICENSE)
+
+## О проблеме MC-305422
+
+В Minecraft Java 26.2 встречается клиентский вылет/отключение при обработке пакета `clientbound/minecraft:waypoint`: `ClientWaypointManager.updateWaypoint` пытается обновить waypoint, который отсутствует в реестре клиента, и выбрасывает `NullPointerException`.
+
+- **Баг Mojang:** [MC-305422 — Players can sometimes get kicked due to a waypoint packet the client fails to handle](https://bugs.mojang.com/browse/MC-305422).
+- **Официальное исправление:** [Minecraft 26.3 Snapshot 2](https://www.minecraft.net/en-us/article/minecraft-26-3-snapshot-2), включено в [Minecraft Java Edition 26.3](https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3).
+- **Для кого плагин:** серверы, продолжающие использовать Minecraft 26.2 и совместимые серверные ядра. При возможности рекомендуем обновиться до версии с официальным исправлением.
+
 Небольшой Paper-плагин для обхода клиентского сбоя Locator Bar на Minecraft 26.2.
 
 ## Назначение
@@ -61,7 +77,7 @@ gradle clean build
 
 **Критическое ограничение:** наличие TRACK в серверном реестре не доказывает, что клиент до сих пор хранит эту метку. Если клиент потерял метку после ранее полученного TRACK, сервер пропустит UPDATE и клиент всё ещё может отключиться. Кроме того, PacketEvents не наблюдает пакеты, отправленные через `sendPacketSilently`. Поэтому фильтр является **экспериментальной частичной защитой**, а не гарантированным исправлением MC-305422.
 
-Перед установкой на основной сервер необходимо тестирование на копии DivineMC 26.2: обычное движение меток, смена мира, телепортация, повторный вход и сценарий «долгое AFK → движение».
+Перед установкой на другой сервер рекомендуется проверить на тестовой копии: обычное движение меток, смену мира, телепортацию, повторный вход и сценарий «долгое AFK → движение». На DivineMC 26.2 за первый день эксплуатации администрация не наблюдала повторения указанного вылета; это не гарантирует отсутствия проблемы во всех условиях.
 
 ## Диагностика
 

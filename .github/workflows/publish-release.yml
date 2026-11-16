@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/publish-release.yml"
+      - ".github/release-notes/**"
   workflow_dispatch:
     inputs:
       tag:
@@ -99,4 +100,18 @@ jobs:
               --title "LocatorBarFix $RELEASE_TAG" \
               --generate-notes \
               --latest
+          fi
+
+      - name: Update description of existing GitHub Release
+        if: steps.validate.outputs.already_published == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes=".github/release-notes/$RELEASE_TAG.md"
+          if [[ -f "$notes" ]]; then
+            gh release edit "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --notes-file "$notes"
+          else
+            echo "No release notes file for $RELEASE_TAG; keeping existing description."
           fi
