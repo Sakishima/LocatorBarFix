@@ -1,0 +1,102 @@
+name: Publish Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/publish-release.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Тег релиза (должен совпадать с версией в build.gradle.kts)"
+        required: true
+        type: string
+        default: "v1.0.1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish versioned JAR
+    if: github.repository == 'Sakishima/LocatorBarFix' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || 'v1.0.1' }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.2.1"
+
+      - name: Validate release version and existing tag
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(grep -m1 '^version = "' build.gradle.kts | cut -d '"' -f2)"
+          if [[ -z "$version" || "$RELEASE_TAG" != "v$version" ]]; then
+            echo "Тег $RELEASE_TAG не совпадает с версией проекта $version." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "Релиз $RELEASE_TAG уже опубликован."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run tests and build distributable JAR
+        if: steps.validate.outputs.already_published == 'false'
+        run: gradle clean build
+
+      - name: Generate SHA-256 checksum
+        if: steps.validate.outputs.already_published == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd build/libs
+          jar="LocatorBarFix-${{ steps.validate.outputs.version }}.jar"
+          test -s "$jar"
+          sha256sum "$jar" > "$jar.sha256"
+
+      - name: Publish GitHub Release
+        if: steps.validate.outputs.already_published == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.validate.outputs.version }}"
+          jar="build/libs/LocatorBarFix-$version.jar"
+          notes=".github/release-notes/$RELEASE_TAG.md"
+          if [[ -f "$notes" ]]; then
+            gh release create "$RELEASE_TAG" "$jar" "$jar.sha256" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "LocatorBarFix $RELEASE_TAG" \
+              --notes-file "$notes" \
+              --latest
+          else
+            gh release create "$RELEASE_TAG" "$jar" "$jar.sha256" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "LocatorBarFix $RELEASE_TAG" \
+              --generate-notes \
+              --latest
+          fi
